@@ -1,4 +1,5 @@
 import copy
+import random
 
 def string_to_byte(s):
 	return [int(x, 16) for x in map(''.join, zip(*[iter(s)]*2))]
@@ -63,3 +64,12 @@ def getIsoPad(data):
 	for i in range(len(data), len(padData)):
 		padData[i] = 0
 	return padData
+
+def getRandomBytes(size):
+	random.seed()
+	a = []
+	for i in range(0, size):
+		a.append(random.randint(0,255))
+	return a
+
+print getRandomBytes(8)
