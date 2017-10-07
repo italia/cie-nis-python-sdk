@@ -1,3 +1,5 @@
+import copy
+
 def string_to_byte(s):
 	return [int(x, 16) for x in map(''.join, zip(*[iter(s)]*2))]
 
@@ -50,3 +52,14 @@ def checkdigit(data):
 		tot += curval * weight[i % 3]
 	tot = tot % 10
 	return ord('0') + tot
+
+def getIsoPad(data):
+	if len(data) & 0x7 == 0:
+		padLen = len(data) + 8
+	else:
+		padLen = len(data) - (len(data) & 0x7) + 0x08
+	padData = copy.copy(data)
+	padData[len(data)] = 0x80
+	for i in range(len(data), len(padData)):
+		padData[i] = 0
+	return padData
