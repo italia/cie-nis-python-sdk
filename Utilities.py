@@ -78,5 +78,3 @@ def getRandomBytes(size):
 	for i in range(0, size):
 		a.append(random.randint(0,255))
 	return a
-
-print getRandomBytes(8)
