@@ -89,3 +89,48 @@ def stringXor(a, b):
 	for i in range(0, len(a)):
 		data.append(a[i] ^ b[i])
 	return data
+
+def lenToBytes(value):
+	if (value<0x80):
+		return [value]
+	
+	if (value<=0xff): 
+		return [0x81,value]
+	
+	elif (value<=0xffff): 
+		return [0x82,value >> 8,value & 0xff]
+	
+	elif (value<=0xffffff): 
+		return [0x83, (value >> 16), ((value>> 8) & 0xff), (value & 0xff)]
+	
+	elif (value<=0xffffffff): 
+		return [0x84, (value >>24), ((value>> 16) & 0xff), ((value>> 8) & 0xff), (value & 0xff)]
+	
+	raise Exception("Dati troppo lunghi")
+
+def asn1Tag(array, tag): 
+		_tag=  tagToByte(tag)
+		_len= lenToBytes(len(array))
+		data=[0] * (len(_tag)+len(_len)+len(array))
+
+		data = _tag + _len + array
+		return data;
+
+
+def tagToByte(value):
+	if (value<=0xff): 
+		return [value]
+	
+	elif (value<=0xffff): 
+		return [(value >> 8),(value & 0xff)]
+	
+	elif (value<=0xffffff): 
+		return [(value>> 16), ((value>> 8) & 0xff), (value & 0xff)]
+	
+	elif (value<=0xffffffff): 
+		return [(value>>24), ((value>> 16) & 0xff),((value>> 8) & 0xff), (value & 0xff)]
+	
+	raise Exception("tag troppo lungo")
+
+print asn1Tag([10, 20, 30, 60], 2003)
+print tagToByte(2003)
