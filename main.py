@@ -18,6 +18,8 @@ class CIEInterface:
         self.kSessEnc = None
         self.kSessMac = None
 
+        self.index = 0
+
         print('Waiting for the CIE...')
         try:
             self.cardservice = cardrequest.waitforcard()
@@ -47,6 +49,16 @@ class CIEInterface:
             0xA0, 0x00, 0x00, 0x00, 0x00, 0x39  # AID
         ]
         return self.transmit(apdu)
+
+    def seqIncrement(self, index=None):
+        if index is None:
+            return self.seqIncrement(len(self.seq) - 1)
+
+        if self.seq[index] == 0xFF:
+            self.seq[index] = 0
+            self.seqIncrement(index - 1)
+        else:
+            self.seq[index] += 1
 
     def readNIS(self):
         self.selectIAS()
@@ -116,6 +128,134 @@ class CIEInterface:
         self.kSessEnc = get_sha1(kSeed + [0x00, 0x00, 0x00, 0x01])[:16]
 
         self.seq = decResp[4:8] + decResp[12:16]
+
+    def secureMessage(self, keyEnc, keyMac, apdu):
+        self.seqIncrement()
+        calcMac = getIsoPad(self.seq + apdu[:4])
+        dataField = None
+
+        if apdu[4] != 0 and len(apdu) > 5:
+            enc = desEnc(keyEnc, getIsoPad(apdu[5:5 + apdu[4]]))
+            if apdu[1] % 2 == 0:
+                doob = asn1Tag([0x01] + enc, 0x87)
+            else:
+                doob = asn1Tag(enc, 0x85)
+
+            calcMac = calcMac + doob
+            dataField = dataField if dataField is not None else [] + doob
+
+        if len(apdu) == 5 or len(apdu) == apdu[4] + 6:
+            doob = [0x97, 0x01, apdu[-1]]
+            calcMac = calcMac + doob
+
+            if dataField is None:
+                dataField = doob
+            else:
+                dataField = dataField + doob
+
+        smMac = macEnc(keyMac, getIsoPad(calcMac))
+        dataField = dataField + [0x8e, 0x08] + smMac
+        finale = apdu[:4] + [len(dataField)] + dataField + [0x00]
+
+        return finale
+
+    def setIndex(self, *args):
+        tmpIndex = 0
+        for i in range(0, len(args)):
+            if args[i] < 0:
+                tmpIndex += args[i] & 0xFF
+            else:
+                tmpIndex += args[i]
+
+        self.index = tmpIndex
+
+    def respSecureMessage(self, keyEnc, keySig, resp, odd=False):
+        self.seqIncrement()
+
+        self.setIndex(0)
+        encData = None
+        encObj = None
+        dataObj = None
+
+        lenResp = len(resp)
+
+        firstPass = True
+        while firstPass or self.index < lenResp:
+            firstPass = False
+
+            if resp[self.index] == 0x99:
+                if resp[self.index + 1] != 0x02:
+                    raise Exception('Errore verifica SecureMessage - DataObject length')
+
+                dataObj = resp[self.index:self.index + 4]
+                self.setIndex(self.index, 4)
+                continue
+
+            if resp[self.index] == 0x8e:
+                calcMac = macEnc(keySig, getIsoPad(self.seq + encObj + dataObj))
+                self.setIndex(self.index + 1)
+
+                if resp[self.index] != 0x08:
+                    raise Exception('Errore verifica del SecureMessage - wrong MAC length')
+
+                self.setIndex(self.index, 1)
+                if calcMac != resp[self.index:self.index + 8]:
+                    raise Exception('Errore verifica del SecureMessage - MAC mismatch')
+
+                self.setIndex(self.index, 8)
+                continue
+
+            if resp[self.index] == 0x87:
+                if unsignedToBytes(resp[self.index + 1]) > unsignedToBytes(0x80):
+                    lgn = 0
+                    llen = unsignedToBytes(resp[self.index + 1]) - 0x80
+                    if llen == 1:
+                        lgn = unsignedToBytes(resp[self.index + 2])
+                    elif llen == 2:
+                        lgn = (resp[self.index + 2] << 8) | resp[self.index + 3]
+
+                    encObj = resp[self.index:self.index + llen + lgn + 2]
+                    encData = resp[self.index + llen + 3:self.index + llen + 2 + lgn]
+                    self.setIndex(self.index, llen, lgn, 2)
+                else:
+                    encObj = resp[self.index:self.index + resp[self.index + 1] + 2]
+                    encData = resp[self.index + 3:self.index + 2 + resp[self.index + 1]]
+                    self.setIndex(self.index, resp[self.index + 1], 2)
+                continue
+
+            if resp[self.index] == 0x85:
+                if resp[self.index + 1] > 0x80:
+                    lgn = 0
+                    llen = resp[self.index + 1] - 0x80
+                    if llen == 1:
+                        lgn = resp[self.index + 2]
+                    elif llen == 2:
+                        lgn = (resp[self.index + 2] << 8) | resp[self.index + 3]
+
+                    encObj = resp[self.index:self.index + llen + lgn + 2]
+                    encData = resp[self.index + llen + 2, self.index + llen + 2 + lgn]
+                    self.setIndex(self.index, llen, lgn, 2)
+                else:
+                    encObj = resp[self.index:self.index + resp[self.index + 1] + 2]
+                    encData = resp[self.index + 2:self.index + 2 + resp[self.index + 1]]
+                    self.setIndex(self.index, resp[self.index + 1], 2)
+                continue
+
+            raise Exception('Tag non previsto nella risposta in SecureMessage')
+
+        if encData is not None and not odd:
+            return isoRemove(desDec(keyEnc, encData))
+
+        return None
+
+    def readDg(self, numDg):
+        somma = (numDg + 0x80)
+
+        appo = [0x0C, 0xB0, somma, 0x00, 0x06]
+        apdu = self.secureMessage(self.kSessEnc, self.kSessMac, appo)
+
+        resp, sw = self.transmit(apdu)
+        return nfc_response_to_array(resp), sw
 
     def transmit(self, apdu):
         response, sw1, sw2 = self.cardservice.connection.transmit(apdu)
