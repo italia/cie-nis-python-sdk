@@ -81,3 +81,11 @@ def getRandomBytes(size):
 	for i in range(0, size):
 		a.append(random.randint(0,255))
 	return a
+
+def stringXor(a, b):
+	if len(a) != len(b):
+		raise Exception("Lunghezze diverse in stringXor")
+	data = []
+	for i in range(0, len(a)):
+		data[i] = a[i] ^ b[i]
+	return data
