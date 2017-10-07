@@ -17,9 +17,6 @@ def get_sha1(data):
 def nfc_response_to_array(resp):
 	return string_to_byte(resp.replace(' ', ''))
 
-def toUint(dataB):
-  return int(bytes.encode('hex'), 16)
-
 def PadInt(value, size):
 	sz = value[size:]
 	print byte_to_string(sz)
@@ -45,6 +42,7 @@ def byte_to_string(byte):
 
 def checkdigit(data):
 	tot = 0
+	curval = 0
 	weight =  [7, 3, 1]
 	for i in range(0, len(data)):
 		ch = chr(data[i]).upper()
@@ -57,6 +55,8 @@ def checkdigit(data):
 			else:
 				if ch == '<':
 					curval = 0
+				else:
+					raise Exception('Not a valid character')
 		tot += curval * weight[i % 3]
 	tot = tot % 10
 	return ord('0') + tot
@@ -66,9 +66,12 @@ def getIsoPad(data):
 		padLen = len(data) + 8
 	else:
 		padLen = len(data) - (len(data) & 0x7) + 0x08
-	padData = copy.copy(data)
+	padData = [None] * padLen
+	for i in range(0, len(data)):
+		padData[i] = data[i]
+	#print len(padData)
 	padData[len(data)] = 0x80
-	for i in range(len(data), len(padData)):
+	for i in range(len(data) + 1, len(padData)):
 		padData[i] = 0
 	return padData
 
