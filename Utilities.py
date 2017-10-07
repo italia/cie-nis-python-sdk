@@ -136,3 +136,6 @@ def isoRemove(data):
 		if(data[i] != 0x00):
 			raise Exception("Padding ISO non presente")
 	return data[:i]
+
+print asn1Tag([7, 11, 136, 140, 180, 240, 195, 139, 146, 127, 157, 53, 120, 200, 74, 176], 10)
+print asn1Tag([7, 11, 136, 140, 180, 240, 195, 139, 146, 127, 157, 53, 120, 200, 74, 176], 100)
