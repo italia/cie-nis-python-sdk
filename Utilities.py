@@ -33,9 +33,6 @@ def fill(size, content):
 def unsignedToBytes(b):
 	return b & 0xFF
 
-def lenToBytes(value):
-	pass
-
 def byte_to_string(byte):
 	hex_string = "".join("%02x" % b for b in byte)
 	return hex_string
@@ -109,12 +106,12 @@ def lenToBytes(value):
 	raise Exception("Dati troppo lunghi")
 
 def asn1Tag(array, tag): 
-		_tag=  tagToByte(tag)
-		_len= lenToBytes(len(array))
-		data=[0] * (len(_tag)+len(_len)+len(array))
+	_tag=  tagToByte(tag)
+	_len= lenToBytes(len(array))
+	data=[0] * (len(_tag)+len(_len)+len(array))
 
-		data = _tag + _len + array
-		return data;
+	data = _tag + _len + array
+	return data;
 
 
 def tagToByte(value):
