@@ -13,8 +13,6 @@ def macEnc(key, data):
     mid2 = desDec(k2, mid1[-8:])
     mid3 = desEnc(k3, mid2[:8])
 
-    print(mid1, mid2, mid3)
-
     return mid3
 
 def desEnc(masterKey, data):
