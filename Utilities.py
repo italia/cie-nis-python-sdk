@@ -131,6 +131,3 @@ def tagToByte(value):
 		return [(value>>24), ((value>> 16) & 0xff),((value>> 8) & 0xff), (value & 0xff)]
 	
 	raise Exception("tag troppo lungo")
-
-print asn1Tag([10, 20, 30, 60], 2003)
-print tagToByte(2003)
