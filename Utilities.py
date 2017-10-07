@@ -1,11 +1,18 @@
 import copy
 import random
+import hashlib
 
 def string_to_byte(s):
 	return [int(x, 16) for x in map(''.join, zip(*[iter(s)]*2))]
 
 def string_to_chars_values(s):
 	return [ord(x) for x in list(s)]
+
+def get_sha1(data):
+	m = hashlib.sha1()
+	m.update(bytearray(data))
+
+	return [ord(i) for i in list(m.digest())]
 
 def nfc_response_to_array(resp):
 	return string_to_byte(resp.replace(' ', ''))
