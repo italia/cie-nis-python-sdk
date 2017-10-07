@@ -89,4 +89,3 @@ def stringXor(a, b):
 	for i in range(0, len(a)):
 		data.append(a[i] ^ b[i])
 	return data
-print stringXor([10,20, 30, 60], [90, 80, 19, 90])
