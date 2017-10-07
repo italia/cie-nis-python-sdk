@@ -131,3 +131,11 @@ def tagToByte(value):
 		return [(value>>24), ((value>> 16) & 0xff),((value>> 8) & 0xff), (value & 0xff)]
 	
 	raise Exception("tag troppo lungo")
+
+def isoRemove(data):
+	for i in range(len(data) - 1, -1, -1):
+		if(data[i] == 0x80): 
+			break
+		if(data[i] != 0x00):
+			raise Exception("Padding ISO non presente")
+	return data[:i]
