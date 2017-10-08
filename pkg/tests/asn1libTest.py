@@ -1,7 +1,12 @@
+#!/usr/bin/env python
 import unittest
 
 from pkg.lib.asn1lib import *
 
+__author__ = "Alekos Filini, Daniela Brozzoni"
+__license__ = "BSD-3-Clause"
+__version__ = "1.0"
+__status__ = "Develop"
 
 class TestAlgorithms(unittest.TestCase):
     def setUp(self):

@@ -1,6 +1,10 @@
 import imutils
 import cv2
 
+__author__ = "Alekos Filini, Daniela Brozzoni"
+__license__ = "BSD-3-Clause"
+__version__ = "1.0"
+__status__ = "Develop"
 
 def maxRect(r1, r2, r3):
     minX = min(r1[0], r2[0], r3[0])
