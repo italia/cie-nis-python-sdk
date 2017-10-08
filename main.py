@@ -1,4 +1,4 @@
-from CIEInterface import CIEInterface
+from pkg.lib.CIEInterface import CIEInterface
 
 
 def main():
