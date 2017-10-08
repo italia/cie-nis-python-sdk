@@ -98,7 +98,7 @@ def checkdigit(data):
 def getIsoPad(data):
     """
     Adds a padding at the end of an array
-    :param data: The array to process
+    :param data: The array of integers to process
     :return: The padd-ed array
     """
 
