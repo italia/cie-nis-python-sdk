@@ -108,10 +108,8 @@ def lenToBytes(value):
 def asn1Tag(array, tag): 
 	_tag=  tagToByte(tag)
 	_len= lenToBytes(len(array))
-	data=[0] * (len(_tag)+len(_len)+len(array))
-
 	data = _tag + _len + array
-	return data;
+	return data
 
 
 def tagToByte(value):

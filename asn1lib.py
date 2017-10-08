@@ -73,7 +73,8 @@ class ASN1:
             'tag': tag,
             'length': length,
             'bytes': bytes,
-            'children': children
+            'children': children,
+            'verify': lambda d: d == bytes
         }
 
         return ans, lastOffset

@@ -7,6 +7,10 @@ from smartcard.Exceptions import CardRequestTimeoutException
 
 from Utilities import *
 from Algorithms import *
+from asn1lib import *
+
+def p(arr):
+    print ['%x' % x for x in arr]
 
 
 class CIEInterface:
@@ -132,7 +136,9 @@ class CIEInterface:
     def secureMessage(self, keyEnc, keyMac, apdu):
         self.seqIncrement()
         calcMac = getIsoPad(self.seq + apdu[:4])
+        smMac = None
         dataField = None
+        doob = None
 
         if apdu[4] != 0 and len(apdu) > 5:
             enc = desEnc(keyEnc, getIsoPad(apdu[5:5 + apdu[4]]))
@@ -142,14 +148,14 @@ class CIEInterface:
                 doob = asn1Tag(enc, 0x85)
 
             calcMac = calcMac + doob
-            dataField = dataField if dataField is not None else [] + doob
+            dataField = (dataField if dataField is not None else []) + doob
 
         if len(apdu) == 5 or len(apdu) == apdu[4] + 6:
             doob = [0x97, 0x01, apdu[-1]]
             calcMac = calcMac + doob
 
             if dataField is None:
-                dataField = doob
+                dataField = doob[:]
             else:
                 dataField = dataField + doob
 
@@ -248,14 +254,122 @@ class CIEInterface:
 
         return None
 
+    def parseLength(self, data):
+        dataLen = len(data)
+
+        if dataLen == 0:
+            raise Exception('Invalid array')
+
+        tag = data[0]
+        readPos = 2
+
+        byteLen = data[1]
+        if byteLen > 128:
+            lenlen = byteLen - 128
+            byteLen = 0
+            for i in range(lenlen):
+                if readPos == dataLen:
+                    raise Exception()
+
+                byteLen = (byteLen << 8) | data[readPos]
+                readPos += 1
+
+        return readPos + byteLen
+
     def readDg(self, numDg):
         somma = (numDg + 0x80)
+        data = []
 
         appo = [0x0C, 0xB0, somma, 0x00, 0x06]
         apdu = self.secureMessage(self.kSessEnc, self.kSessMac, appo)
 
         resp, sw = self.transmit(apdu)
-        return nfc_response_to_array(resp), sw
+        resp = nfc_response_to_array(resp)
+
+        chunkLen = self.respSecureMessage(self.kSessEnc, self.kSessMac, resp)
+        maxLen = self.parseLength(chunkLen)
+
+        while len(data) < maxLen:
+            readLen = min(0xe0, maxLen - len(data))
+            appo2 = [0x0C, 0xB0] + [(len(data) / 256) & 0x7F, len(data) & 0xFF, readLen]
+            apduDg = self.secureMessage(self.kSessEnc, self.kSessMac, appo2)
+            respDg2, sw = self.transmit(apduDg)
+
+            chunk = self.respSecureMessage(self.kSessEnc, self.kSessMac, nfc_response_to_array(respDg2))
+
+            data += chunk
+
+        return data
+
+    def extractData(self):
+        mainDGData = self.readDg(30)
+        mainDG = ASN1(mainDGData)
+
+        verifyChild0 = mainDG.root['children'][0]['verify']([0x30, 0x31, 0x30, 0x37])
+        verifyChild1 = mainDG.root['children'][1]['verify']([0x30, 0x34, 0x30, 0x30, 0x30, 0x30])
+
+        if not verifyChild0 or not verifyChild1:
+            raise Exception('Invalid DG#30')
+
+        lambdas = {
+            0x61: lambda: self.extractMRZ(),
+            0x75: lambda: self.extractPhoto(),
+            0x6b: lambda: self.extractAdditionalDetails()
+        }
+
+        mapNames = {
+            0x61: 'mrz',
+            0x75: 'photo',
+            0x6b: 'additional_details'
+        }
+
+        results = {}
+
+        for byte in mainDG.root['children'][2]['bytes']:
+            if lambdas.has_key(byte):
+                results[mapNames[byte]] = lambdas[byte]()
+
+        return results
+
+    def extractMRZ(self):
+        data = self.readDg(1)
+        parser = ASN1(data)
+
+        mrzStr = ''.join([chr(x) for x in parser.root['children'][0]['bytes']])
+        return mrzStr
+
+    def extractAdditionalDetails(self):
+        data = self.readDg(11)
+        parser = ASN1(data)
+
+        ans = {
+            'nis': ''.join(['%02x' % x for x in parser.root['children'][0]['bytes']]),
+            'full_name': ''.join([chr(x) for x in parser.root['children'][1]['bytes']]),
+            'vat_code': ''.join([chr(x) for x in parser.root['children'][2]['bytes']]),
+            'birth_date': ''.join([chr(x) for x in parser.root['children'][3]['bytes']]),
+            'birth_place': ''.join([chr(x) for x in parser.root['children'][4]['bytes']]),
+            'address': ''.join([chr(x) for x in parser.root['children'][5]['bytes']]),
+        }
+
+        return ans
+
+    def extractPhoto(self):
+        data = self.readDg(2)
+        parser = ASN1(data)
+
+        JPEG_MAGIC = [0x00, 0x00, 0x00, 0x0C, 0x6A, 0x50, 0x20, 0x20, 0x0D, 0x0A, 0x87, 0x0A, 0x00, 0x00, 0x00, 0x14,
+                      0x66, 0x74, 0x79, 0x70, 0x6A, 0x70, 0x32]
+
+        photoBytes = parser.root['children'][0]['children'][1]['children'][1]['bytes']
+        jpegStart = [x for x in xrange(len(photoBytes)) if photoBytes[x:x + len(JPEG_MAGIC)] == JPEG_MAGIC][0]
+
+        jpegImg = photoBytes[jpegStart:]
+
+        with open("img.jpeg", "wb") as file:
+            file.write(bytearray(jpegImg))
+            file.close()
+
+        return jpegImg
 
     def transmit(self, apdu):
         response, sw1, sw2 = self.cardservice.connection.transmit(apdu)
@@ -266,7 +380,9 @@ class CIEInterface:
 def main():
     interface = CIEInterface()
     interface.mrtdAuth('YYMMDD', 'YYMMDD', '*********')
-    print(interface.kSessMac, interface.kSessEnc, interface.seq)
+    data = interface.extractData()
+
+    print(data)
 
 if __name__ == "__main__":
     main()
