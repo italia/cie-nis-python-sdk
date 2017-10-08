@@ -1,6 +1,14 @@
 import pyDes
 
+
 def macEnc(key, data):
+    """
+    Calculates the MAC for `data` using `key`
+    :param key: The key used to calculate the MAC
+    :param data: The data to process
+    :return: The calculated MAC
+    """
+
     k1 = key[0:8]
 
     k2Start = 8 if len(key) >= 16 else 0
@@ -15,7 +23,15 @@ def macEnc(key, data):
 
     return mid3
 
+
 def desEnc(masterKey, data):
+    """
+    Encrypts `data` using `masterKey` as key and TripleDES with CBC and no padding as algorithm
+    :param masterKey: The master encryption key
+    :param data: The data to encrypt
+    :return: The encrypted data as an array of integers
+    """
+
     key24 = None
 
     if len(masterKey) == 8:
@@ -31,7 +47,15 @@ def desEnc(masterKey, data):
     tripleDes = pyDes.triple_des(key24, pyDes.CBC, "\0\0\0\0\0\0\0\0", '', pyDes.PAD_NORMAL)
     return [ord(i) for i in tripleDes.encrypt(data)]
 
+
 def desDec(masterKey, data):
+    """
+        Decrypts `data` using `masterKey` as key and TripleDES with CBC and no padding as algorithm
+        :param masterKey: The master decryption key
+        :param data: The data to decrypt
+        :return: The decrypted data as an array of integers
+        """
+
     key24 = None
 
     if len(masterKey) == 8:
