@@ -3,28 +3,46 @@ from imutils import paths
 import numpy as np
 import argparse
 import imutils
+from PIL import Image
+import pytesseract
+import argparse
+import os
 import cv2
- 
-# construct the argument parse and parse the arguments
-ap = argparse.ArgumentParser()
-ap.add_argument("-i", "--images", required=True, help="path to images directory")
-args = vars(ap.parse_args())
- 
+import time
+
+
+threshold = 700
+
+def variance_of_laplacian(image):
+	# compute the Laplacian of the image and then return the focus
+	# measure, which is simply the variance of the Laplacian
+	return cv2.Laplacian(image, cv2.CV_64F).var()
+
+def is_blurry(image):
+	if variance_of_laplacian(image) < threshold:
+		return 1
+	return 0
+
 # initialize a rectangular and square structuring kernel
 rectKernel = cv2.getStructuringElement(cv2.MORPH_RECT, (13, 5))
 sqKernel = cv2.getStructuringElement(cv2.MORPH_RECT, (21, 21))
 
-# loop over the input image paths
-for imagePath in paths.list_images(args["images"]):
+cap = cv2.VideoCapture(0)
+
+while(True):
+   # Capture frame-by-frame
+	ret, image = cap.read()
+
 	# load the image, resize it, and convert it to grayscale
-	print imagePath
-	image = cv2.imread(imagePath)
-	image = imutils.resize(image, height=600)
+	image = imutils.resize(image, height=400)
 	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
- 
+
 	# smooth the image using a 3x3 Gaussian, then apply the blackhat
 	# morphological operator to find dark regions on a light background
+	
 	gray = cv2.GaussianBlur(gray, (3, 3), 0)
+	gray = cv2.medianBlur(gray, 3)
+	
 	blackhat = cv2.morphologyEx(gray, cv2.MORPH_BLACKHAT, rectKernel)
 
 	# compute the Scharr gradient of the blackhat image and scale the
@@ -33,7 +51,7 @@ for imagePath in paths.list_images(args["images"]):
 	gradX = np.absolute(gradX)
 	(minVal, maxVal) = (np.min(gradX), np.max(gradX))
 	gradX = (255 * ((gradX - minVal) / (maxVal - minVal))).astype("uint8")
-
+	
 	# apply a closing operation using the rectangular kernel to close
 	# gaps in between letters -- then apply Otsu's thresholding method
 	gradX = cv2.morphologyEx(gradX, cv2.MORPH_CLOSE, rectKernel)
@@ -57,8 +75,9 @@ for imagePath in paths.list_images(args["images"]):
 	cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
 		cv2.CHAIN_APPROX_SIMPLE)[-2]
 	cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
- 
+ 	
 	# loop over the contours
+	flag = 0
 	for c in cnts:
 		# compute the bounding box of the contour and use the contour to
 		# compute the aspect ratio and coverage ratio of the bounding box
@@ -69,6 +88,7 @@ for imagePath in paths.list_images(args["images"]):
  
 		# check to see if the aspect ratio and coverage width are within
 		# acceptable criteria
+		#print(ar, crWidth)
 		if ar > 5 and crWidth > 0.75:
 			# pad the bounding box since we applied erosions and now need
 			# to re-grow it
@@ -79,13 +99,24 @@ for imagePath in paths.list_images(args["images"]):
  
 			# extract the ROI from the image and draw a bounding box
 			# surrounding the MRZ
-			roi = image[y:y + h, x:x + w].copy()
+			roi = gray[y:y + h, x:x + w].copy()
 			cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
-			break
- 
-	# show the output images
-	cv2.imshow("Image", image)
-	cv2.imshow("ROI", roi)
-	cv2.waitKey(0)
+			if is_blurry(roi):
+				continue
+			dir_path = os.path.dirname(os.path.realpath(__file__))
+			filename = dir_path + "/{}.png".format(os.getpid())
+			cv2.imwrite(filename, roi)
+			text = pytesseract.image_to_string(Image.open(filename))
+			#os.remove(filename)
+			if len(text) >= 92:
+				print(text)
+				flag = 1
+ 	cv2.imshow('frame',image)
+	#show the output images
 
+	if (cv2.waitKey(1) & 0xFF == ord('q')) or flag == 1:
+		break
 
+#######
+cap.release()
+cv2.destroyAllWindows()
