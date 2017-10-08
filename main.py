@@ -25,6 +25,8 @@ def main():
                 data['additional_details']['birth_place'].replace('<', ' '),
                 data['additional_details']['birth_date'])
 
+    print('Immagine salvata in: img.jpeg')
+
 
 if __name__ == "__main__":
     main()
