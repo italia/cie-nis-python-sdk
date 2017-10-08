@@ -1,5 +1,11 @@
 # coding=utf-8
+import random
+
 from pkg.lib.CIEInterface import CIEInterface
+
+
+def hide_sensitive_data(string, chance=0.50):
+    return ''.join([s if random.random() > chance else '*' for s in list(string)])
 
 
 def main():
@@ -18,12 +24,15 @@ def main():
           'Codice fiscale: {}\n' \
           'Residenza: {}\n' \
           'Luogo di nascita: {}\n' \
-          'Data di nascita: {}' \
+          'Data di nascita: {}\n\n' \
+          'MRZ: {}' \
         .format(data['additional_details']['full_name'].replace('<<', ' '),
-                data['additional_details']['vat_code'],
-                data['additional_details']['address'].replace('<', ' '),
+                hide_sensitive_data(data['additional_details']['vat_code']),
+                hide_sensitive_data(data['additional_details']['address'].replace('<', ' ')),
                 data['additional_details']['birth_place'].replace('<', ' '),
-                data['additional_details']['birth_date'])
+                data['additional_details']['birth_date'],
+
+                hide_sensitive_data(data['mrz']))
 
     print('Immagine salvata in: img.jpeg')
 
