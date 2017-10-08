@@ -1,11 +1,7 @@
-# Python CIE3 SDK
+# Python CIE3 SDK   [![Build Status](https://travis-ci.org/afilini/cie-mrtd-python-sdk.svg?branch=master)](https://travis-ci.org/afilini/cie-mrtd-python-sdk)
 
 Libreria leggera e portabile in Python per l'estrazione delle informazioni contenute nella CIE 3.0, con e senza autenticazione EAC.
 
-## Build status
-| Branch  | Status |
-| ------------- | ------------- |
-| `master`  | [![Build Status](https://travis-ci.org/afilini/cie-mrtd-python-sdk.svg?branch=master)](https://travis-ci.org/afilini/cie-mrtd-python-sdk) |
 
 ## Installazione
 
