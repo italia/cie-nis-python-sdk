@@ -10,12 +10,13 @@
 #import <CryptoTokenKit/CryptoTokenKit.h>
 
 #define VERBOSE_LOG 1
-#define RAW_TRANSMIT_REQUEST 0
 
 @interface ViewController ()
 @property (nonatomic, retain) TKSmartCardSlotManager * mngr;
 @property (nonatomic, retain) NSMutableArray * slots;
 @property (nonatomic, retain) NSMutableArray * cards;
+@property (nonatomic, retain) IBOutlet NSTextField *status;
+@property (nonatomic, retain) IBOutlet NSTextField *NIS;
 @end
 
 @implementation ViewController
@@ -26,6 +27,9 @@
                                     
     self.mngr = [TKSmartCardSlotManager defaultManager];
     assert(self.mngr);
+    
+    self.status.stringValue = @"";
+    self.NIS.stringValue = @"";
 
     // Observe readers joining and leaving.
     //
@@ -77,6 +81,7 @@
                 NSLog(@"  name:  %@",slot.name);
                 NSLog(@"  state: %@",[self stateString:slot.state]);
 #endif
+                self.status.stringValue = [self stateString:slot.state];
             }];
         };
     }  // end of Slot change
@@ -84,6 +89,8 @@
     {
         TKSmartCardSlot * slot = object;
         NSLog(@"  state: %@ for %@",[self stateString:slot.state], slot);
+        self.status.stringValue = [self stateString:slot.state];
+        self.NIS.stringValue = @"";
         
         if(slot.state == TKSmartCardSlotStateValidCard)
         {
@@ -149,6 +156,7 @@
                         if(ok)
                         {
                             NSLog(@">>>>> read NIS ok %@", nis);
+                            self.NIS.stringValue = nis;
                         }
                         else
                         {
@@ -171,70 +179,6 @@
         }
     }];
 }
-
-#if RAW_TRANSMIT_REQUEST
-- (void)selectIASOnSmartCard:(TKSmartCard *)sc withComplete:(void (^)(BOOL ok))complete
-{
-    // prepara la prima APDU: Seleziona il DF dell'applicazione IAS
-
-    unsigned char readnis[] = {
-        0x00, // CLA
-        0xa4, // INS = SELECT FILE
-        0x04, // P1 = Select By AID
-        0x0c, // P2 = Return No Data
-        0x0d, // LC = lenght of AID
-        0xA0, 0x00, 0x00, 0x00, 0x30, 0x80, 0x00, 0x00, 0x00, 0x09, 0x81, 0x60, 0x01 // AID
-    };
-    
-    [sc transmitRequest:[NSData dataWithBytes:readnis length:sizeof(readnis)] reply:^(NSData * _Nullable response, NSError * _Nullable error) {
-        
-        NSLog(@"reply %@ %@", response, error);
-        complete(YES);
-        
-    }];
-}
-
-- (void)selectCIEOnSmartCard:(TKSmartCard *)sc withComplete:(void (^)(BOOL ok))complete
-{
-    // prepara la seconda APDU: Seleziona il DF degli oggetti CIE
-
-    unsigned char readnis[] = {
-        0x00, // CLA
-        0xa4, // INS = SELECT FILE
-        0x04, // P1 = Select By AID
-        0x0c, // P2 = Return No Data
-        0x06, // LC = lenght of AID
-        0xA0, 0x00, 0x00, 0x00, 0x00, 0x39 // AID
-    };
-    
-    [sc transmitRequest:[NSData dataWithBytes:readnis length:sizeof(readnis)] reply:^(NSData * _Nullable response, NSError * _Nullable error) {
-        
-        NSLog(@"reply %@ %@", response, error);
-        complete(YES);
-            }];
-}
-
-- (void)readNISOnSmartCard:(TKSmartCard *)sc withComplete:(void (^)(BOOL ok, NSString *nis))complete
-{
-    // prepara la terza APDU: Lettura del file dell'ID_Servizi selezionato contestualmente tramite Short Identifier (SFI = 1)
-    
-    unsigned char readnis[] = {
-        0x00, // CLA
-        0xb0, // INS = READ BINARY
-        0x81, // P1 = Read by SFI & SFI = 1
-        0x00, // P2 = Offset = 0
-        0x0c // LE = lenght of NIS
-    };
-
-    [sc transmitRequest:[NSData dataWithBytes:readnis length:sizeof(readnis)] reply:^(NSData * _Nullable response, NSError * _Nullable error) {
-       
-        NSLog(@"reply %@ (%ld) %@", response, response.length, error);
-        complete(YES, @"");
-
-    }];
-}
-
-#else
 
 - (void)selectIASOnSmartCard:(TKSmartCard *)sc withComplete:(void (^)(BOOL ok))complete
 {
@@ -318,25 +262,23 @@
      ];
 }
 
-#endif
-
 - (NSString *)stateString:(TKSmartCardSlotState)state
 {
     switch (state) {
         case TKSmartCardSlotStateEmpty:
-            return @"TKSmartCardSlotStateEmpty";
+            return @"slot empty";
             break;
         case TKSmartCardSlotStateMissing:
-            return @"TKSmartCardSlotStateMissing";
+            return @"card missing";
             break;
         case TKSmartCardSlotStateMuteCard:
-            return @"TKSmartCardSlotStateMuteCard";
+            return @"mute card";
             break;
         case TKSmartCardSlotStateProbing:
-            return @"TKSmartCardSlotStateProbing";
+            return @"card probing";
             break;
         case TKSmartCardSlotStateValidCard:
-            return @"TKSmartCardSlotStateValidCard";
+            return @"card valid";
             break;
         default:
             return @"error";
