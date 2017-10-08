@@ -36,7 +36,7 @@ class ASN1:
             while self.data[offset + count] != 0x00 and self.data[offset + count + 1] != 0x00:
                 count += 1
 
-            return count + 1, offset + 1
+            return count, offset + 1
 
         if self.data[offset] < 128:
             return self.data[offset], offset + 1

@@ -21,5 +21,13 @@ class TestAlgorithms(unittest.TestCase):
         self.assertEqual(5, parser.root['length'])
         self.assertEqual([0x12, 0x34, 0x56, 0x78, 0x90], parser.root['bytes'])
 
+    def test_ASN1_03(self):
+        data = [0x30, 0x80, 0x04, 0x03, 0x56, 0x78, 0x90, 0x00, 0x00]
+        parser = ASN1(data)
+        self.assertEqual(16, parser.root['tag'])
+        self.assertEqual(5, parser.root['length'])
+        self.assertEqual([0x04, 0x03, 0x56, 0x78, 0x90], parser.root['bytes'])
+
+
 if __name__ == '__main__':
     unittest.main()
