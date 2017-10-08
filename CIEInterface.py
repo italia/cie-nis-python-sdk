@@ -9,8 +9,20 @@ from Utilities import *
 from Algorithms import *
 from asn1lib import *
 
+
 class CIEInterface:
+    """
+    The Python interface to read data from a CIE3
+
+    This class uses pyscard as a low-level interface to the NFC card,
+    make sure your reader is compatible with this library.
+    """
+
     def __init__(self):
+        """
+        Generic constructor
+        """
+
         cardtype = AnyCardType()
         cardrequest = CardRequest(timeout=3, cardType=cardtype)
 
@@ -20,6 +32,7 @@ class CIEInterface:
 
         self.index = 0
 
+        # Wait for the card
         print('Waiting for the CIE...')
         try:
             self.cardservice = cardrequest.waitforcard()
@@ -27,9 +40,16 @@ class CIEInterface:
             print('Card not found, exiting')
             sys.exit(1)
 
+        # Connect to the card if found
         self.cardservice.connection.connect()
+        print('Connected!')
 
     def selectIAS(self):
+        """
+        Sends an APDU to select the IAS section of the CIE
+        :return: The response send by the CIE
+        """
+
         apdu = [0x00,  # CLA
                 0xa4,  # INS = SELECT FILE
                 0x04,  # P1 = Select By AID
@@ -40,6 +60,11 @@ class CIEInterface:
         return self.transmit(apdu)
 
     def selectCIE(self):
+        """
+        Sends an APDU to select the CIE section of the card
+        :return: The response send by the card
+        """
+
         apdu = [
             0x00,  # CLA
             0xa4,  # INS = SELECT FILE
@@ -51,6 +76,11 @@ class CIEInterface:
         return self.transmit(apdu)
 
     def seqIncrement(self, index=None):
+        """
+        Increment the message sequence values
+        :param index: Byte to increment
+        """
+
         if index is None:
             return self.seqIncrement(len(self.seq) - 1)
 
@@ -61,36 +91,53 @@ class CIEInterface:
             self.seq[index] += 1
 
     def readNIS(self):
+        """
+        Reads the NIS value from the card and returns it
+        :return: The NIS value in form of array of integers
+        """
+
         self.selectIAS()
         self.selectCIE()
 
         response, _ = self.transmit(string_to_byte("00B081000C"))
-        return response
-
-    def readSOD(self):
-        self.selectIAS()
-        self.selectCIE()
-
-        response, sw = self.transmit(string_to_byte("00B086000A"))
-        return response
+        return nfc_response_to_array(response)
 
     def initialSelect(self):
+        """
+        Sends an "initial selection" APDU to the card preparing it for the EAC authentication
+        :return: The response sent by the CIE
+        """
+
         apdu = string_to_byte("00A4040C07A0000002471001")
         return self.transmit(apdu)
 
     def randomNumber(self):
+        """
+        Sends an APDU to the CIE requesting a random number
+        :return: The random number in form of integer array
+        """
+
         apdu = string_to_byte("0084000008")
         response, _ = self.transmit(apdu)
-        return response
+        return nfc_response_to_array(response)
 
     def mrtdAuth(self, birthStr, expireStr, pnStr):
-        self.initialSelect()
-        rndMrtd = nfc_response_to_array(self.randomNumber())
+        """
+        Unlocks the card using the data contained in the MRZ
+        :param birthStr: Card owner's birth date in 'YYMMDD' format
+        :param expireStr: Card expiration date in 'YYMMDD' format
+        :param pnStr: Card number
+        """
 
+        self.initialSelect()
+        rndMrtd = self.randomNumber()
+
+        # Split the strings into array of chars
         birth = string_to_chars_values(birthStr)
         expire = string_to_chars_values(expireStr)
         pn = string_to_chars_values(pnStr)
 
+        # Add the checksum at the end
         seedPartPn = pn + [checkdigit(pn)]
         seedPartBirth = birth + [checkdigit(birth)]
         seedPartExpire = expire + [checkdigit(expire)]
@@ -106,30 +153,43 @@ class CIEInterface:
         eIs1 = desEnc(bacEnc, rndIs1 + rndMrtd + kIs)
         eisMac = macEnc(bacMac, getIsoPad(eIs1))
 
+        # Calculates the APDU for the mutual authentication
         apduMutuaAutenticazione = [0x00, 0x82, 0x00, 0x00, 0x28] + eIs1 + eisMac + [0x28]
 
+        # Sends the APDU
         respMutaAuth, sw = self.transmit(apduMutuaAutenticazione)
         respMutaAuth = nfc_response_to_array(respMutaAuth)
 
         if sw != '9000':
-            raise Exception('Errore durante l\'autenticazione')
+            raise Exception('CIEInterface.mrtdAuth: could not complete the authentication process')
 
         kIsMac = macEnc(bacMac, getIsoPad(respMutaAuth[:32]))
         kIsMac2 = respMutaAuth[-8:]
 
+        # Make sure the calculated and received MAC are the same
         if kIsMac != kIsMac2:
-            raise Exception('Errore durante l\'autenticazione')
+            raise Exception('CIEInterface.mrtdAuth: could not complete the authentication process')
 
         decResp = desDec(bacEnc, respMutaAuth[:32])
         kMrtd = decResp[-16:]
         kSeed = stringXor(kIs, kMrtd)
 
+        # Sets the session encryption key and session MAC
         self.kSessMac = get_sha1(kSeed + [0x00, 0x00, 0x00, 0x02])[:16]
         self.kSessEnc = get_sha1(kSeed + [0x00, 0x00, 0x00, 0x01])[:16]
 
+        # Initialize the sequence vector
         self.seq = decResp[4:8] + decResp[12:16]
 
     def secureMessage(self, keyEnc, keyMac, apdu):
+        """
+        Sends a secure message containing `apdu` to the CIE using the provided encryption keys
+        :param keyEnc: The session encryption key
+        :param keyMac: The session MAC
+        :param apdu: The APDU to send
+        :return: The response coming from the CIE
+        """
+
         self.seqIncrement()
         calcMac = getIsoPad(self.seq + apdu[:4])
         smMac = None
@@ -162,6 +222,11 @@ class CIEInterface:
         return finale
 
     def setIndex(self, *args):
+        """
+        Sets the "pointer" to the response buffer
+        :param args: multiple values to add to the current index
+        """
+
         tmpIndex = 0
         for i in range(0, len(args)):
             if args[i] < 0:
@@ -172,6 +237,15 @@ class CIEInterface:
         self.index = tmpIndex
 
     def respSecureMessage(self, keyEnc, keySig, resp, odd=False):
+        """
+        Parses and decrypts the encrypted response coming from the CIE
+        :param keyEnc: The session encryption key
+        :param keySig: The key signature
+        :param resp: The buffer containing the response as array of bytes
+        :param odd:
+        :return: The decrypted message
+        """
+
         self.seqIncrement()
 
         self.setIndex(0)
@@ -187,7 +261,7 @@ class CIEInterface:
 
             if resp[self.index] == 0x99:
                 if resp[self.index + 1] != 0x02:
-                    raise Exception('Errore verifica SecureMessage - DataObject length')
+                    raise Exception('CIEInterface.respSecureMessage: invalid dataObject length')
 
                 dataObj = resp[self.index:self.index + 4]
                 self.setIndex(self.index, 4)
@@ -198,11 +272,11 @@ class CIEInterface:
                 self.setIndex(self.index + 1)
 
                 if resp[self.index] != 0x08:
-                    raise Exception('Errore verifica del SecureMessage - wrong MAC length')
+                    raise Exception('CIEInterface.respSecureMessage: MAC length must be 0x08')
 
                 self.setIndex(self.index, 1)
                 if calcMac != resp[self.index:self.index + 8]:
-                    raise Exception('Errore verifica del SecureMessage - MAC mismatch')
+                    raise Exception('CIEInterface.respSecureMessage: the calculated MAC does not match the returned one')
 
                 self.setIndex(self.index, 8)
                 continue
@@ -243,7 +317,7 @@ class CIEInterface:
                     self.setIndex(self.index, resp[self.index + 1], 2)
                 continue
 
-            raise Exception('Tag non previsto nella risposta in SecureMessage')
+            raise Exception('CIEInterface.respSecureMessage: unknown ASN.1 tag encountered during the response parsing')
 
         if encData is not None and not odd:
             return isoRemove(desDec(keyEnc, encData))
@@ -251,10 +325,16 @@ class CIEInterface:
         return None
 
     def parseLength(self, data):
+        """
+        Extracts the length from a BER-encoded buffer of data
+        :param data: the data to process
+        :return: the size of the data
+        """
+
         dataLen = len(data)
 
         if dataLen == 0:
-            raise Exception('Invalid array')
+            raise Exception('parseLength: empty buffer')
 
         tag = data[0]
         readPos = 2
@@ -273,6 +353,12 @@ class CIEInterface:
         return readPos + byteLen
 
     def readDg(self, numDg):
+        """
+        Reads the data group identified by `numDg`
+        :param numDg: the data group number to read
+        :return: the raw data group buffer
+        """
+
         somma = (numDg + 0x80)
         data = []
 
@@ -298,6 +384,11 @@ class CIEInterface:
         return data
 
     def extractData(self):
+        """
+        Extracts the personal data from a CIE after the EAC authentication
+        :return: The parsed data
+        """
+
         mainDGData = self.readDg(30)
         mainDG = ASN1(mainDGData)
 
@@ -305,7 +396,7 @@ class CIEInterface:
         verifyChild1 = mainDG.root['children'][1]['verify']([0x30, 0x34, 0x30, 0x30, 0x30, 0x30])
 
         if not verifyChild0 or not verifyChild1:
-            raise Exception('Invalid DG#30')
+            raise Exception('extractData: Invalid DG 30')
 
         lambdas = {
             0x61: lambda: self.extractMRZ(),
@@ -328,6 +419,11 @@ class CIEInterface:
         return results
 
     def extractMRZ(self):
+        """
+        Extracts and parses the MRZ data group
+        :return: the parsed data group as a string
+        """
+
         data = self.readDg(1)
         parser = ASN1(data)
 
@@ -335,11 +431,16 @@ class CIEInterface:
         return mrzStr
 
     def extractAdditionalDetails(self):
+        """
+        Extracts and parses the additional details stored on the CIE
+        :return: a dictionary containing all the additional informations
+        """
+
         data = self.readDg(11)
         parser = ASN1(data)
 
         ans = {
-            'nis': ''.join(['%02x' % x for x in parser.root['children'][0]['bytes']]),
+            'card_id': ''.join(['%02x' % x for x in parser.root['children'][0]['bytes']]),
             'full_name': ''.join([chr(x) for x in parser.root['children'][1]['bytes']]),
             'vat_code': ''.join([chr(x) for x in parser.root['children'][2]['bytes']]),
             'birth_date': ''.join([chr(x) for x in parser.root['children'][3]['bytes']]),
@@ -350,6 +451,11 @@ class CIEInterface:
         return ans
 
     def extractPhoto(self):
+        """
+        Extracts and saves the photo stored on the CIE
+        :return: The raw JPEG2000 bytes of the photo
+        """
+
         data = self.readDg(2)
         parser = ASN1(data)
 
@@ -368,6 +474,12 @@ class CIEInterface:
         return jpegImg
 
     def transmit(self, apdu):
+        """
+        Sends an APDU to the CIE
+        :param apdu: bytes to send
+        :return: the response and status words
+        """
+
         response, sw1, sw2 = self.cardservice.connection.transmit(apdu)
         status = '%02x%02x' % (sw1, sw2)
 
