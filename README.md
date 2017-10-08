@@ -10,6 +10,10 @@ Per iniziare installa tutte le dipendenze tramite il gestore di pacchetti `pip`,
 pip install -r requirements.txt
 ```
 
+## Esempio
+
+Il file `main.py` contiene un brevissimo esempio che mostra l'estrazione dei dati dalla CIE tramite autenticazione EAC.
+
 ## Struttura
 
 L'intera libreria è strutturata attorno alla classe `CIEInterface` che espone molti metodi utili per inviare comandi alla CIE.
@@ -28,6 +32,6 @@ I metodi a disposizione dell'utilizzatore sono i seguenti:
 	* `additional_details`: Informazioni aggiuntive sul cittadino, come ad esempio l'indirizzo di residenza
 	* `photo`: `bytearray` contenete l'immagine in formato JPEG2000. Per comodità l'immagine viene anche salvata su disco nel file `img.jpeg`.
 
-# Supporto
+## Supporto
 
 La libreria è stata testata con successo su Python `2.7.14` su sistema `macOS`, ma vista la semplicità è molto probabile che funzioni nativamente anche su altre versioni.
