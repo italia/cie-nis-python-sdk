@@ -1,5 +1,6 @@
 import sys
 
+import progressbar
 from smartcard.CardType import AnyCardType
 from smartcard.CardRequest import CardRequest
 from smartcard.util import toHexString
@@ -352,7 +353,7 @@ class CIEInterface:
 
         return readPos + byteLen
 
-    def readDg(self, numDg):
+    def readDg(self, numDg, progressBar=False):
         """
         Reads the data group identified by `numDg`
         :param numDg: the data group number to read
@@ -371,7 +372,12 @@ class CIEInterface:
         chunkLen = self.respSecureMessage(self.kSessEnc, self.kSessMac, resp)
         maxLen = self.parseLength(chunkLen)
 
-        while len(data) < maxLen:
+        bar = None
+        if progressBar:
+            bar = progressbar.ProgressBar(max_value=maxLen)
+
+        dataLen = len(data)
+        while dataLen < maxLen:
             readLen = min(0xe0, maxLen - len(data))
             appo2 = [0x0C, 0xB0] + [(len(data) / 256) & 0x7F, len(data) & 0xFF, readLen]
             apduDg = self.secureMessage(self.kSessEnc, self.kSessMac, appo2)
@@ -380,6 +386,10 @@ class CIEInterface:
             chunk = self.respSecureMessage(self.kSessEnc, self.kSessMac, nfc_response_to_array(respDg2))
 
             data += chunk
+            dataLen += len(chunk)
+
+            if progressBar:
+                bar.update(dataLen)
 
         return data
 
@@ -456,7 +466,7 @@ class CIEInterface:
         :return: The raw JPEG2000 bytes of the photo
         """
 
-        data = self.readDg(2)
+        data = self.readDg(2, progressBar=True)
         parser = ASN1(data)
 
         JPEG_MAGIC = [0x00, 0x00, 0x00, 0x0C, 0x6A, 0x50, 0x20, 0x20, 0x0D, 0x0A, 0x87, 0x0A, 0x00, 0x00, 0x00, 0x14,
