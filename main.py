@@ -1,8 +1,13 @@
+#!/usr/bin/env python
 # coding=utf-8
 import random
 
 from pkg.lib.CIEInterface import CIEInterface
 
+__author__ = "Alekos Filini, Daniela Brozzoni"
+__license__ = "BSD-3-Clause"
+__version__ = "1.0"
+__status__ = "Develop"
 
 def hide_sensitive_data(string, chance=0.50):
     return ''.join([s if random.random() > chance else '*' for s in list(string)])

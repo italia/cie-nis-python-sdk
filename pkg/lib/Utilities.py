@@ -3,6 +3,10 @@ import hashlib
 import random
 import hashlib
 
+__author__ = "Alekos Filini, Daniela Brozzoni"
+__license__ = "BSD-3-Clause"
+__version__ = "1.0"
+__status__ = "Develop"
 
 def string_to_byte(s):
     """

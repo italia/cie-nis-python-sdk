@@ -1,3 +1,8 @@
+__author__ = "Alekos Filini, Daniela Brozzoni"
+__license__ = "BSD-3-Clause"
+__version__ = "1.0"
+__status__ = "Develop"
+
 class ASN1:
     """
     A tiny ASN1 parser which supports the BER format.
