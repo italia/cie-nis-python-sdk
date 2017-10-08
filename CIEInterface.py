@@ -475,10 +475,10 @@ class CIEInterface:
         photoBytes = parser.root['children'][0]['children'][1]['children'][1]['bytes']
         jpegStart = [x for x in xrange(len(photoBytes)) if photoBytes[x:x + len(JPEG_MAGIC)] == JPEG_MAGIC][0]
 
-        jpegImg = photoBytes[jpegStart:]
+        jpegImg = bytearray(photoBytes[jpegStart:])
 
         with open("img.jpeg", "wb") as file:
-            file.write(bytearray(jpegImg))
+            file.write(jpegImg)
             file.close()
 
         return jpegImg
