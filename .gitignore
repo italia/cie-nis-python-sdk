@@ -64,3 +64,4 @@ img.jpeg
 
 .idea
 *.iml
+.venv
