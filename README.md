@@ -1,4 +1,4 @@
-# Python CIE3 SDK   [![Build Status](https://travis-ci.org/afilini/cie-nis-sdk.svg?branch=master)](https://travis-ci.org/afilini/cie-nis-sdk) [![Open Source Love](https://badges.frapsoft.com/os/v1/open-source.svg?v=103)](https://github.com/ellerbrock/open-source-badges/)
+# Python CIE3 SDK   [![Build Status](https://travis-ci.org/italia/cie-nis-python-sdk.svg?branch=master)](https://travis-ci.org/italia/cie-nis-python-sdk) [![Open Source Love](https://badges.frapsoft.com/os/v1/open-source.svg?v=103)](https://github.com/ellerbrock/open-source-badges/)
 
 Libreria leggera e portabile in Python per l'estrazione delle informazioni contenute nella CIE 3.0, con e senza autenticazione EAC.
 
@@ -35,4 +35,4 @@ I metodi a disposizione dell'utilizzatore sono i seguenti:
 
 ## Supporto
 
-La libreria è stata testata con successo su Python `2.7.14` su sistema `macOS`, ma vista la semplicità è molto probabile che funzioni nativamente anche su altre versioni.
+La libreria è stata testata con successo su Python `2.7.14` su sistema `macOS 10.15.3`, ma vista la semplicità è molto probabile che funzioni nativamente anche su altre versioni.
