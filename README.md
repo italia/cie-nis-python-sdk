@@ -35,4 +35,4 @@ I metodi a disposizione dell'utilizzatore sono i seguenti:
 
 ## Supporto
 
-La libreria è stata testata con successo su Python `2.7.14` su sistema `macOS 10.15.3`, ma vista la semplicità è molto probabile che funzioni nativamente anche su altre versioni.
+La libreria è stata testata con successo su Python `2.7.16` su sistema `macOS 10.15.7`, ma vista la semplicità è molto probabile che funzioni nativamente anche su altre versioni.
