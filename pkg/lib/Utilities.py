@@ -2,6 +2,7 @@ import copy
 import hashlib
 import random
 import hashlib
+import six
 
 __author__ = "Alekos Filini, Daniela Brozzoni"
 __license__ = "BSD-3-Clause"
@@ -38,7 +39,10 @@ def get_sha1(data):
     m = hashlib.sha1()
     m.update(bytearray(data))
 
-    return [ord(i) for i in list(m.digest())]
+    if six.PY2:
+        return [ord(i) for i in list(m.digest())]
+    else:
+        return [i for i in list(m.digest())]
 
 
 def nfc_response_to_array(resp):

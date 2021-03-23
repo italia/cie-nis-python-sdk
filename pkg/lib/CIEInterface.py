@@ -1,14 +1,18 @@
+import progressbar
+import six
 import sys
 
-import progressbar
 from smartcard.CardType import AnyCardType
 from smartcard.CardRequest import CardRequest
 from smartcard.util import toHexString
 from smartcard.Exceptions import CardRequestTimeoutException
 
-from Utilities import *
-from Algorithms import *
-from asn1lib import *
+from .Utilities import *
+from .Algorithms import *
+from .asn1lib import *
+
+if six.PY3:
+    xrange = range
 
 __author__ = "Alekos Filini, Daniela Brozzoni"
 __license__ = "BSD-3-Clause"
@@ -384,7 +388,7 @@ class CIEInterface:
         dataLen = len(data)
         while dataLen < maxLen:
             readLen = min(0xe0, maxLen - len(data))
-            appo2 = [0x0C, 0xB0] + [(len(data) / 256) & 0x7F, len(data) & 0xFF, readLen]
+            appo2 = [0x0C, 0xB0] + [(len(data) // 256) & 0x7F, len(data) & 0xFF, readLen]
             apduDg = self.secureMessage(self.kSessEnc, self.kSessMac, appo2)
             respDg2, sw = self.transmit(apduDg)
 
@@ -428,7 +432,7 @@ class CIEInterface:
         results = {}
 
         for byte in mainDG.root['children'][2]['bytes']:
-            if lambdas.has_key(byte):
+            if byte in lambdas:
                 results[mapNames[byte]] = lambdas[byte]()
 
         return results

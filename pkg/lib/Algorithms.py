@@ -1,4 +1,5 @@
 import pyDes
+import six
 
 __author__ = "Alekos Filini, Daniela Brozzoni"
 __license__ = "BSD-3-Clause"
@@ -46,11 +47,15 @@ def desEnc(masterKey, data):
     else:
         key24 = masterKey[0:24]
 
-    key24 = ''.join([chr(x) for x in key24])
-    data = ''.join([chr(x) for x in data])
+    if six.PY2:
+        key24 = ''.join([chr(x) for x in key24])
+        data = ''.join([chr(x) for x in data])
 
-    tripleDes = pyDes.triple_des(key24, pyDes.CBC, "\0\0\0\0\0\0\0\0", '', pyDes.PAD_NORMAL)
-    return [ord(i) for i in tripleDes.encrypt(data)]
+    tripleDes = pyDes.triple_des(key24, pyDes.CBC, "\0\0\0\0\0\0\0\0", "", pyDes.PAD_NORMAL)
+    if six.PY2:
+        return [ord(i) for i in tripleDes.encrypt(data)]
+    else:
+        return [i for i in tripleDes.encrypt(data)]
 
 
 def desDec(masterKey, data):
@@ -70,8 +75,12 @@ def desDec(masterKey, data):
     else:
         key24 = masterKey[0:24]
 
-    key24 = ''.join([chr(x) for x in key24])
-    data = ''.join([chr(x) for x in data])
+    if six.PY2:
+        key24 = ''.join([chr(x) for x in key24])
+        data = ''.join([chr(x) for x in data])
 
-    tripleDes = pyDes.triple_des(key24, pyDes.CBC, "\0\0\0\0\0\0\0\0", '', pyDes.PAD_NORMAL)
-    return [ord(i) for i in tripleDes.decrypt(data)]
+    tripleDes = pyDes.triple_des(key24, pyDes.CBC, "\0\0\0\0\0\0\0\0", "", pyDes.PAD_NORMAL)
+    if six.PY2:
+        return [ord(i) for i in tripleDes.decrypt(data)]
+    else:
+        return [i for i in tripleDes.decrypt(data)]

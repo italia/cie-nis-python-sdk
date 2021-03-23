@@ -14,18 +14,18 @@ def hide_sensitive_data(string, chance=0.50):
 
 
 def main():
-    print '\n                ██████╗██╗███████╗██████╗ \n' \
+    print ('\n                ██████╗██╗███████╗██████╗ \n' \
           '               ██╔════╝██║██╔════╝╚════██╗\n' \
           '               ██║     ██║█████╗   █████╔╝\n' \
           '               ██║     ██║██╔══╝   ╚═══██╗\n' \
           '               ╚██████╗██║███████╗██████╔╝\n' \
-          '                ╚═════╝╚═╝╚══════╝╚═════╝ \n'
+          '                ╚═════╝╚═╝╚══════╝╚═════╝ \n')
 
     interface = CIEInterface()
     interface.mrtdAuth('YYMMDD', 'YYMMDD', '*********')
     data = interface.extractData()
 
-    print 'Nome e cognome: {}\n' \
+    print ('Nome e cognome: {}\n' \
           'Codice fiscale: {}\n' \
           'Residenza: {}\n' \
           'Luogo di nascita: {}\n' \
@@ -37,7 +37,7 @@ def main():
                 data['additional_details']['birth_place'].replace('<', ' '),
                 data['additional_details']['birth_date'],
 
-                hide_sensitive_data(data['mrz']))
+                hide_sensitive_data(data['mrz'])))
 
     print('Immagine salvata in: img.jpeg')
 
