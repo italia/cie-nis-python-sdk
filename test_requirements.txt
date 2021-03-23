@@ -1,2 +1,1 @@
-progressbar==2.3
 pyDes==2.0.1
