@@ -34,7 +34,7 @@ class CIEInterface:
         """
 
         cardtype = AnyCardType()
-        cardrequest = CardRequest(timeout=3, cardType=cardtype)
+        cardrequest = CardRequest(timeout=30, cardType=cardtype)
 
         self.seq = None
         self.kSessEnc = None
